@@ -1,132 +1,95 @@
 <!DOCTYPE html>
 <html lang="id">
-<head><meta charset="UTF-8"><title>MP3 Player Pro</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-body{font-family:sans-serif;background:#121212;color:white;margin:0;padding:15px;padding-bottom:150px}
-h2,h3{margin:10px 0}
-input{padding:10px;width:200px;border:none;border-radius:6px}
-button{padding:10px 12px;border:none;border-radius:6px;background:#1DB954;color:white;font-weight:bold;cursor:pointer}
-.song{display:flex;align-items:center;background:#1e1e1e;padding:8px;border-radius:8px;margin:8px 0;gap:10px}
-.song img{width:60px;height:60px;border-radius:4px}
-.song b{font-size:14px}
-#playerBar{position:fixed;bottom:0;left:0;right:0;background:#181818;padding:10px;border-top:2px solid #1DB954}
-#controls{display:flex;justify-content:center;gap:15px;margin-top:5px}
-#progress{width:100%}
-.red{background:red !important}
-.hidden{display:none}
-</style>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#080808">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MyMusic">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
+<title>MyMusic</title>
 </head>
+
 <body>
-<h2>🎵 MP3 Player Pro</h2>
 
-<h3>1. Tambah Lagu Dari File</h3>
-<input type="file" id="fileInput" accept="audio/*" multiple>
+<div class="app">
 
-<h3>2. Cari Lagu Youtube</h3>
-<input type="text" id="searchInput" placeholder="Jennie">
-<button id="searchBtn">Search</button>
-
-<h3>Playlist Kamu</h3>
-<div id="playlist">Kosong</div>
-
-<div id="resultsWrap" class="hidden">
-  <div style="display:flex;justify-content:space-between">
-    <h3>Hasil Pencarian</h3>
-    <button id="closeResults" class="red">X Tutup</button>
+<header>
+  <div>
+    <h1>MyMusic</h1>
+    <p id="status">Offline Music Player</p>
   </div>
-  <div id="results"></div>
-</div>
+  <button id="addBtn">＋</button>
+</header>
 
-<!-- PLAYER BAR -->
-<div id="playerBar" class="hidden">
-  <p id="songTitle">-</p>
-  <audio id="audio" style="width:100%"></audio>
-  <input type="range" id="progress" value="0">
-  <div id="controls">
+<section class="player">
+
+  <div class="cover" id="cover">♪</div>
+
+  <h2 id="title">Belum ada lagu</h2>
+  <p id="artist">Tambahkan musik untuk mulai</p>
+
+  <div class="progress">
+    <span id="cur">0:00</span>
+    <input id="bar" type="range" min="0" max="100" value="0">
+    <span id="dur">0:00</span>
+  </div>
+
+  <div class="controls">
     <button id="prev">⏮</button>
-    <button id="play">▶️</button>
+    <button id="play">▶</button>
     <button id="next">⏭</button>
+  </div>
+
+  <div class="sub">
+    <button id="shuffle">🔀</button>
     <button id="repeat">🔁</button>
   </div>
+
+</section>
+
+<section id="panel">
+
+  <label class="file">
+    📁 Tambah File
+    <input id="files" type="file"
+      accept="audio/*,video/mp4,.mp3,.wav,.m4a,.aac"
+      multiple>
+  </label>
+
+  <div class="search">
+    <input id="query" placeholder="Cari musik di YouTube...">
+    <button id="searchBtn">Cari</button>
+  </div>
+
+  <div id="results"></div>
+
+</section>
+
+<section class="library">
+
+  <div class="libhead">
+    <div>
+      <h3>Library</h3>
+      <small id="count">0 lagu</small>
+    </div>
+    <button id="clear">Hapus</button>
+  </div>
+
+  <div id="playlist"></div>
+
+</section>
+
+<audio id="audio" playsinline preload="metadata"></audio>
+<div id="youtubePlayer"></div>
+
 </div>
 
-<script>
-const API_KEY = 'AIzaSyCEpXXPWfTLuhrESQ_XxVz2uiPpA5FJ5XA';
-let db, playlist=[], current=0;
+<script src="https://www.youtube.com/iframe_api"></script>
+<script src="script.js"></script>
 
-const $=id=>document.getElementById(id);
-
-// 1. BUKA DATABASE
-indexedDB.open("MP3DB",1).onupgradeneeded=e=>e.target.result.createObjectStore("s",{keyPath:"id"});
-indexedDB.open("MP3DB",1).onsuccess=e=>{db=e.target.result; loadPlaylist()};
-
-$('searchBtn').onclick=search;
-$('closeResults').onclick=()=>$('resultsWrap').classList.add('hidden');
-$('fileInput').onchange=e=>{[...e.target.files].forEach(f=>{let r=new FileReader();r.onload=()=>addSong({id:'f'+Date.now(),title:f.name,src:r.result});r.readAsDataURL(f)})};
-
-function addSong(song){db.transaction("s","readwrite").objectStore("s").put(song).onsuccess=loadPlaylist}
-function loadPlaylist(){db.transaction("s","readonly").objectStore("s").getAll().onsuccess=e=>{playlist=e.target.result;render()}}
-function del(id){db.transaction("s","readwrite").objectStore("s").delete(id).onsuccess=loadPlaylist}
-
-function render(){
-  if(playlist.length==0){$('playlist').innerHTML='Kosong';return}
-  $('playlist').innerHTML='';
-  playlist.forEach((s,i)=>{
-    $('playlist').innerHTML+=`<div class="song"><b style="flex:1">${s.title}</b><button onclick="playSong(${i})">Play</button><button onclick="del('${s.id}')">Hapus</button></div>`
-  })
-}
-
-// 2. PLAY DARI PLAYLIST - INI YG BISA FULL KONTROL
-function playSong(i){
-  current=i; let s=playlist[i];
-  $('playerBar').classList.remove('hidden');
-  $('songTitle').innerText=s.title;
-  $('audio').src=s.src; $('audio').play();
-  $('play').innerText='⏸️';
-}
-$('play').onclick=()=>{$('audio').paused?($('audio').play(),$('play').innerText='⏸️'):($('audio').pause(),$('play').innerText='▶️')}
-$('next').onclick=()=>{if(current<playlist.length-1)playSong(current+1)}
-$('prev').onclick=()=>{if(current>0)playSong(current-1)}
-$('repeat').onclick=()=>{$('audio').loop=!$('audio').loop; $('repeat').style.background=$('audio').loop?'red':'#1DB954'}
-$('audio').ontimeupdate=()=>{$('progress').value=($('audio').currentTime/$('audio').duration)*100||0}
-$('progress').oninput=e=>{$('audio').currentTime=($('progress').value/100)*$('audio').duration}
-$('audio').onended=()=>{if(!$('audio').loop && current<playlist.length-1)playSong(current+1)}
-
-// 3. SEARCH YOUTUBE
-async function search(){
-  let q=$('searchInput').value; if(!q)return alert('Isi dulu');
-  $('resultsWrap').classList.remove('hidden'); $('results').innerHTML='Loading...';
-  let res=await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${q}&key=${API_KEY}&maxResults=5&type=video`);
-  let data=await res.json(); $('results').innerHTML='';
-  data.items.forEach(v=>{
-    $('results').innerHTML+=`<div class="song"><img src="${v.snippet.thumbnails.default.url}"><b style="flex:1">${v.snippet.title}</b><button onclick="playYT('${v.id.videoId}','${v.snippet.title}')">Play</button><button onclick="download('${v.id.videoId}','${v.snippet.title}')">+ Playlist</button></div>`
-  })
-}
-
-// 4. PLAY YT LANGSUNG - CUMA PREVIEW, GA BISA NEXT
-function playYT(id,title){
-  $('playerBar').classList.remove('hidden');
-  $('songTitle').innerText='[YT] '+title;
-  $('audio').src=`https://www.youtube.com/embed/${id}?autoplay=1`; 
-  $('audio').style.display='none'; // sembunyikan bar karena gabisa kontrol
-  alert('Ini preview Youtube. Klik "+ Playlist" dulu biar bisa di kontrol full')
-}
-
-// 5. DOWNLOAD YT KE PLAYLIST - PAKAI API BARU
-async function download(id,title){
-  alert('Downloading...');
-  try{
-    let res=await fetch(`https://api.ytjar.com/v1/dl/mp3?url=https://youtube.com/watch?v=${id}`);
-    let data=await res.json();
-    if(data.url){
-      let blob=await (await fetch(data.url)).blob();
-      let r=new FileReader(); 
-      r.onload=()=>{addSong({id:'yt'+id,title:title,src:r.result});alert('Berhasil masuk playlist!')}; 
-      r.readAsDataURL(blob)
-    }else alert('Gagal: '+data.message)
-  }catch(e){alert('API Down. Coba 1 menit lagi')}
-}
-</script>
 </body>
 </html>
