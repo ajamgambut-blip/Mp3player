@@ -765,7 +765,7 @@ async function downloadYoutube(song){
   
   try{
     // Kirim ke server Vercel buat convert jadi mp3
-    const res = await fetch(`https://ymusic-server-kamu.vercel.app/api/download?id=${song.videoId}`);
+    const res = await fetch(`https://ymusic-mp3player.vercelapp/api/download?id=${song.videoId}`);
     
     if(!res.ok) throw new Error("Server error");
     
