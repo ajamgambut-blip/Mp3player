@@ -1,0 +1,7 @@
+{
+  "name": "mp3player-server",
+  "version": "1.0.0",
+  "dependencies": {
+    "yt-dlp-exec": "^1.0.0"
+  }
+}
