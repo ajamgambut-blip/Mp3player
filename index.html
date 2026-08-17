@@ -1,64 +1,198 @@
-    <!DOCTYPE html>
-    <html lang="id">
-    <head><meta charset="UTF-8"><title>MP3 Player</title>
-    <style>body{font-family:sans-serif;padding:20px;background:#111;color:white}#searchInput{width:300px;padding:10px}#searchBtn{padding:10px}.song{display:flex;margin:10px 0;background:#222;padding:10px;border-radius:8px}.song img{width:120px;margin-right:10px}button{margin:5px;padding:8px;cursor:pointer}</style>
-    </head>
-    <body>
-    <h1>🎵 MP3 Player</h1>
-    <input type="text" id="searchInput" placeholder="Cari lagu...">
-    <button id="searchBtn">Search</button>
-    <div id="results"></div>
-    <div id="player" style="display:none;margin-top:20px;"><h3 id="songTitle"></h3><iframe id="audio" width="560" height="315" src="" frameborder="0" allowfullscreen></iframe></div>
+<!DOCTYPE html>
+<html lang="id">
+<head><meta charset="UTF-8"><title>MP3 Player Pro</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body{font-family:sans-serif;background:#0a0a0a;color:white;margin:0;padding:15px}
+h3{margin:15px 0 5px}
+input,button{padding:10px;border:none;border-radius:6px;margin:3px}
+button{cursor:pointer;background:#1db954;color:white;font-weight:bold}
+button:hover{background:#1ed760}
+.song{display:flex;align-items:center;background:#181818;padding:10px;border-radius:8px;margin:5px 0}
+.song.active{background:#282828}
+.song img{width:60px;height:60px;border-radius:4px;margin-right:10px}
+.song button{background:#333;font-size:12px}
+#playerBar{position:fixed;bottom:0;left:0;right:0;background:#181818;padding:10px;border-top:1px solid #333}
+#controls{display:flex;justify-content:center;align-items:center;gap:15px}
+#progress{width:100%}
+#playlist{margin-bottom:100px}
+.offline{border-left:4px solid #1db954}
+.yt{border-left:4px solid #ff0000}
+#resultsHeader{display:flex;justify-content:space-between;align-items:center}
+#closeResults{background:red;padding:5px 10px}
+</style>
+</head>
+<body>
+<h1>🎵 MP3 Player Pro</h1>
 
-    <script>
-    const searchInput = document.getElementById('searchInput');
-    const searchBtn = document.getElementById('searchBtn');
-    const resultsDiv = document.getElementById('results');
-    const player = document.getElementById('player');
-    const audio = document.getElementById('audio');
-    const songTitle = document.getElementById('songTitle');
+<h3>1. Tambah Lagu Dari File</h3>
+<input type="file" id="fileInput" accept="audio/*" multiple>
 
-    const API_KEY = 'AIzaSyCEpXXPWfTLuhrESQ_XxVz2uiPpA5FJ5XA'; // KEY KAMU
+<h3>2. Cari Lagu Youtube</h3>
+<input type="text" id="searchInput" placeholder="Cari lagu...">
+<button id="searchBtn">Search</button>
 
-    searchBtn.onclick = searchVideos;
-    searchInput.onkeypress = (e) => { if(e.key === 'Enter') searchVideos(); };
+<h3>Playlist Kamu</h3>
+<div id="playlist"></div>
 
-    async function searchVideos() {
-      const query = searchInput.value;
-      if(!query) return alert('Isi dulu');
-      resultsDiv.innerHTML = 'Loading...';
-      try {
-        const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(query)}&key=${API_KEY}&type=video`;
-        const res = await fetch(url);
-        const data = await res.json();
-        if(data.error){ resultsDiv.innerHTML = 'Error API: ' + data.error.message; return; }
-        resultsDiv.innerHTML = '';
-        data.items.forEach(item => {
-          const videoId = item.id.videoId;
-          const title = item.snippet.title.replace(/"/g, '&quot;');
-          const thumb = item.snippet.thumbnails.medium.url;
-          resultsDiv.innerHTML += `<div class="song"><img src="${thumb}"><div><p><b>${title}</b></p><button onclick="playSong('${videoId}', \`${title}\`)">Play</button> <button onclick="downloadSong('${videoId}', \`${title}\`)">Download MP3</button></div></div>`;
-        });
-      } catch(err){ resultsDiv.innerHTML = 'Gagal: ' + err.message; }
-    }
+<div id="resultsSection" style="display:none;">
+  <div id="resultsHeader">
+    <h3>Hasil Pencarian</h3>
+    <button id="closeResults">X Tutup</button>
+  </div>
+  <div id="results"></div>
+</div>
 
-    function playSong(videoId, title) {
-      player.style.display = 'block';
-      songTitle.innerText = title;
-      audio.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
-    }
+<!-- BAR PLAYER BAWAH -->
+<div id="playerBar" style="display:none;">
+  <p id="songTitle" style="margin:0 0 5px 0">-</p>
+  <input type="range" id="progress" value="0" max="100">
+  <div id="controls">
+    <button id="prevBtn">⏮</button>
+    <button id="playBtn">▶️</button>
+    <button id="nextBtn">⏭</button>
+    <button id="repeatBtn">🔁</button>
+  </div>
+  <audio id="audio"></audio>
+</div>
 
-    async function downloadSong(videoId, title) {
-      alert('Sedang proses download...');
-      const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
-      const res = await fetch('https://api.cobalt.tools/api/json', {
-        method: 'POST', headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: youtubeUrl, aFormat: "mp3", isAudioOnly: true })
-      });
-      const data = await res.json();
-      if(data.url) window.open(data.url, '_blank');
-      else alert('Gagal: ' + data.error.code);
-    }
-    </script>
-    </body>
-    </html>
+<script>
+const API_KEY = 'AIzaSyCEpXXPWfTLuhrESQ_XxVz2uiPpA5FJ5XA'; // KEY KAMU
+let db, playlist = [], currentIndex = -1, isRepeat = false;
+
+const $ = id => document.getElementById(id);
+const audio = $('audio'), playlistDiv = $('playlist'), resultsDiv = $('results'), resultsSection = $('resultsSection');
+
+// 1. DATABASE
+const req = indexedDB.open("Mp3PlayerPro", 1);
+req.onupgradeneeded = e => { db = e.target.result; db.createObjectStore("songs", {keyPath: "id"}); };
+req.onsuccess = e => { db = e.target.result; loadPlaylist(); };
+
+$('searchBtn').onclick = searchVideos;
+$('searchInput').onkeypress = e => { if(e.key === 'Enter') searchVideos(); };
+$('fileInput').onchange = addFiles;
+$('closeResults').onclick = () => resultsSection.style.display = 'none'; // TOMBOL TUTUP
+
+// 2. TAMBAH FILE
+function addFiles(e){
+  [...e.target.files].forEach(file => {
+    const reader = new FileReader();
+    reader.onload = () => saveSong({id: 'file_'+Date.now()+file.name, title: file.name, data: reader.result, type: 'file'});
+    reader.readAsDataURL(file);
+  });
+}
+
+// 3. SIMPAN & LOAD PLAYLIST
+function saveSong(song){
+  const tx = db.transaction("songs", "readwrite");
+  tx.objectStore("songs").put(song);
+  tx.oncomplete = loadPlaylist;
+}
+function loadPlaylist(){
+  const tx = db.transaction("songs", "readonly");
+  tx.objectStore("songs").getAll().onsuccess = e => {
+    playlist = e.target.result;
+    renderPlaylist();
+  }
+}
+function renderPlaylist(){
+  playlistDiv.innerHTML = '';
+  playlist.forEach((song, i) => {
+    playlistDiv.innerHTML += `
+    <div class="song ${song.type==='file'?'offline':'yt'} ${i===currentIndex?'active':''}">
+      <div style="flex:1"><b>${song.title}</b><br><small>${song.type==='file'?'File':'Youtube'}</small></div>
+      <button onclick="playIndex(${i})">Play</button>
+      <button onclick="deleteSong('${song.id}')">Hapus</button>
+    </div>`;
+  });
+}
+
+// 4. HAPUS
+function deleteSong(id){
+  const tx = db.transaction("songs", "readwrite");
+  tx.objectStore("songs").delete(id);
+  tx.oncomplete = loadPlaylist;
+}
+
+// 5. PLAYER CONTROLS
+function playIndex(index){
+  currentIndex = index;
+  const song = playlist[index];
+  $('playerBar').style.display = 'block';
+  $('songTitle').innerText = song.title;
+  audio.src = song.data;
+  audio.play();
+  $('playBtn').innerText = '⏸️';
+  renderPlaylist();
+}
+
+$('playBtn').onclick = () => {
+  if(audio.paused){ audio.play(); $('playBtn').innerText = '⏸️'; }
+  else { audio.pause(); $('playBtn').innerText = '▶️'; }
+}
+$('nextBtn').onclick = () => { if(currentIndex < playlist.length-1) playIndex(currentIndex+1); }
+$('prevBtn').onclick = () => { if(currentIndex > 0) playIndex(currentIndex-1); }
+$('repeatBtn').onclick = () => {
+  isRepeat =!isRepeat;
+  audio.loop = isRepeat;
+  $('repeatBtn').style.background = isRepeat? '#1db954' : '#333';
+}
+audio.onended = () => { if(!isRepeat && currentIndex < playlist.length-1) playIndex(currentIndex+1); }
+audio.ontimeupdate = () => { $('progress').value = (audio.currentTime / audio.duration) * 100 || 0; }
+$('progress').oninput = e => { audio.currentTime = (e.target.value / 100) * audio.duration; }
+
+// 6. SEARCH YOUTUBE
+async function searchVideos() {
+  const query = $('searchInput').value;
+  if(!query) return alert('Isi dulu');
+  resultsSection.style.display = 'block'; // BUKA SECTION
+  resultsDiv.innerHTML = 'Loading...';
+  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(query)}&key=${API_KEY}&type=video`;
+  const res = await fetch(url);
+  const data = await res.json();
+  resultsDiv.innerHTML = '';
+  data.items.forEach(item => {
+    const videoId = item.id.videoId;
+    const title = item.snippet.title.replace(/"/g, '&quot;');
+    const thumb = item.snippet.thumbnails.medium.url;
+    resultsDiv.innerHTML += `<div class="song yt"><img src="${thumb}"><div style="flex:1"><b>${title}</b></div><button onclick="playYT('${videoId}', \`${title}\`)">Play</button> <button onclick="downloadYT('${videoId}', \`${title}\`)">+ Playlist</button></div>`;
+  });
+}
+
+// 7. PLAY YT ONLINE
+function playYT(videoId, title){
+  $('playerBar').style.display = 'block';
+  $('songTitle').innerText = '[YT] ' + title;
+  audio.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+}
+
+// 8. DOWNLOAD YT KE PLAYLIST + OTOMATIS TUTUP
+async function downloadYT(videoId, title) {
+  alert('Downloading...');
+  const res = await fetch('https://api.cobalt.tools/api/json', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({url: `https://www.youtube.com/watch?v=${videoId}`, aFormat: "mp3", isAudioOnly: true})
+  });
+  const data = await res.json();
+  if(data.url){
+    const blob = await (await fetch(data.url)).blob();
+    const reader = new FileReader();
+    reader.onload = () => {
+      saveSong({id: 'yt_'+videoId, title: title, data: reader.result, type: 'yt'});
+      alert(title + ' masuk playlist!');
+      resultsSection.style.display = 'none'; // OTOMATIS TUTUP
+    };
+    reader.readAsDataURL(blob);
+  } else alert('Gagal download');
+}
+
+// 9. BACKGROUND PLAY
+if('mediaSession' in navigator){
+  navigator.mediaSession.setActionHandler('play', () => {$('playBtn').click()});
+  navigator.mediaSession.setActionHandler('pause', () => {$('playBtn').click()});
+  navigator.mediaSession.setActionHandler('previoustrack', () => {$('prevBtn').click()});
+  navigator.mediaSession.setActionHandler('nexttrack', () => {$('nextBtn').click()});
+}
+</script>
+</body>
+</html>
