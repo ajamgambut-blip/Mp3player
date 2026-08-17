@@ -3,195 +3,129 @@
 <head><meta charset="UTF-8"><title>MP3 Player Pro</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body{font-family:sans-serif;background:#0a0a0a;color:white;margin:0;padding:15px}
-h3{margin:15px 0 5px}
-input,button{padding:10px;border:none;border-radius:6px;margin:3px}
-button{cursor:pointer;background:#1db954;color:white;font-weight:bold}
-button:hover{background:#1ed760}
-.song{display:flex;align-items:center;background:#181818;padding:10px;border-radius:8px;margin:5px 0}
-.song.active{background:#282828}
-.song img{width:60px;height:60px;border-radius:4px;margin-right:10px}
-.song button{background:#333;font-size:12px}
-#playerBar{position:fixed;bottom:0;left:0;right:0;background:#181818;padding:10px;border-top:1px solid #333}
-#controls{display:flex;justify-content:center;align-items:center;gap:15px}
+body{font-family:sans-serif;background:#121212;color:white;margin:0;padding:15px;padding-bottom:150px}
+h2,h3{margin:10px 0}
+input{padding:10px;width:200px;border:none;border-radius:6px}
+button{padding:10px 12px;border:none;border-radius:6px;background:#1DB954;color:white;font-weight:bold;cursor:pointer}
+.song{display:flex;align-items:center;background:#1e1e1e;padding:8px;border-radius:8px;margin:8px 0;gap:10px}
+.song img{width:60px;height:60px;border-radius:4px}
+.song b{font-size:14px}
+#playerBar{position:fixed;bottom:0;left:0;right:0;background:#181818;padding:10px;border-top:2px solid #1DB954}
+#controls{display:flex;justify-content:center;gap:15px;margin-top:5px}
 #progress{width:100%}
-#playlist{margin-bottom:100px}
-.offline{border-left:4px solid #1db954}
-.yt{border-left:4px solid #ff0000}
-#resultsHeader{display:flex;justify-content:space-between;align-items:center}
-#closeResults{background:red;padding:5px 10px}
+.red{background:red !important}
+.hidden{display:none}
 </style>
 </head>
 <body>
-<h1>🎵 MP3 Player Pro</h1>
+<h2>🎵 MP3 Player Pro</h2>
 
 <h3>1. Tambah Lagu Dari File</h3>
 <input type="file" id="fileInput" accept="audio/*" multiple>
 
 <h3>2. Cari Lagu Youtube</h3>
-<input type="text" id="searchInput" placeholder="Cari lagu...">
+<input type="text" id="searchInput" placeholder="Jennie">
 <button id="searchBtn">Search</button>
 
 <h3>Playlist Kamu</h3>
-<div id="playlist"></div>
+<div id="playlist">Kosong</div>
 
-<div id="resultsSection" style="display:none;">
-  <div id="resultsHeader">
+<div id="resultsWrap" class="hidden">
+  <div style="display:flex;justify-content:space-between">
     <h3>Hasil Pencarian</h3>
-    <button id="closeResults">X Tutup</button>
+    <button id="closeResults" class="red">X Tutup</button>
   </div>
   <div id="results"></div>
 </div>
 
-<!-- BAR PLAYER BAWAH -->
-<div id="playerBar" style="display:none;">
-  <p id="songTitle" style="margin:0 0 5px 0">-</p>
-  <input type="range" id="progress" value="0" max="100">
+<!-- PLAYER BAR -->
+<div id="playerBar" class="hidden">
+  <p id="songTitle">-</p>
+  <audio id="audio" style="width:100%"></audio>
+  <input type="range" id="progress" value="0">
   <div id="controls">
-    <button id="prevBtn">⏮</button>
-    <button id="playBtn">▶️</button>
-    <button id="nextBtn">⏭</button>
-    <button id="repeatBtn">🔁</button>
+    <button id="prev">⏮</button>
+    <button id="play">▶️</button>
+    <button id="next">⏭</button>
+    <button id="repeat">🔁</button>
   </div>
-  <audio id="audio"></audio>
 </div>
 
 <script>
-const API_KEY = 'AIzaSyCEpXXPWfTLuhrESQ_XxVz2uiPpA5FJ5XA'; // KEY KAMU
-let db, playlist = [], currentIndex = -1, isRepeat = false;
+const API_KEY = 'AIzaSyCEpXXPWfTLuhrESQ_XxVz2uiPpA5FJ5XA';
+let db, playlist=[], current=0;
 
-const $ = id => document.getElementById(id);
-const audio = $('audio'), playlistDiv = $('playlist'), resultsDiv = $('results'), resultsSection = $('resultsSection');
+const $=id=>document.getElementById(id);
 
-// 1. DATABASE
-const req = indexedDB.open("Mp3PlayerPro", 1);
-req.onupgradeneeded = e => { db = e.target.result; db.createObjectStore("songs", {keyPath: "id"}); };
-req.onsuccess = e => { db = e.target.result; loadPlaylist(); };
+// 1. BUKA DATABASE
+indexedDB.open("MP3DB",1).onupgradeneeded=e=>e.target.result.createObjectStore("s",{keyPath:"id"});
+indexedDB.open("MP3DB",1).onsuccess=e=>{db=e.target.result; loadPlaylist()};
 
-$('searchBtn').onclick = searchVideos;
-$('searchInput').onkeypress = e => { if(e.key === 'Enter') searchVideos(); };
-$('fileInput').onchange = addFiles;
-$('closeResults').onclick = () => resultsSection.style.display = 'none'; // TOMBOL TUTUP
+$('searchBtn').onclick=search;
+$('closeResults').onclick=()=>$('resultsWrap').classList.add('hidden');
+$('fileInput').onchange=e=>{[...e.target.files].forEach(f=>{let r=new FileReader();r.onload=()=>addSong({id:'f'+Date.now(),title:f.name,src:r.result});r.readAsDataURL(f)})};
 
-// 2. TAMBAH FILE
-function addFiles(e){
-  [...e.target.files].forEach(file => {
-    const reader = new FileReader();
-    reader.onload = () => saveSong({id: 'file_'+Date.now()+file.name, title: file.name, data: reader.result, type: 'file'});
-    reader.readAsDataURL(file);
-  });
+function addSong(song){db.transaction("s","readwrite").objectStore("s").put(song).onsuccess=loadPlaylist}
+function loadPlaylist(){db.transaction("s","readonly").objectStore("s").getAll().onsuccess=e=>{playlist=e.target.result;render()}}
+function del(id){db.transaction("s","readwrite").objectStore("s").delete(id).onsuccess=loadPlaylist}
+
+function render(){
+  if(playlist.length==0){$('playlist').innerHTML='Kosong';return}
+  $('playlist').innerHTML='';
+  playlist.forEach((s,i)=>{
+    $('playlist').innerHTML+=`<div class="song"><b style="flex:1">${s.title}</b><button onclick="playSong(${i})">Play</button><button onclick="del('${s.id}')">Hapus</button></div>`
+  })
 }
 
-// 3. SIMPAN & LOAD PLAYLIST
-function saveSong(song){
-  const tx = db.transaction("songs", "readwrite");
-  tx.objectStore("songs").put(song);
-  tx.oncomplete = loadPlaylist;
+// 2. PLAY DARI PLAYLIST - INI YG BISA FULL KONTROL
+function playSong(i){
+  current=i; let s=playlist[i];
+  $('playerBar').classList.remove('hidden');
+  $('songTitle').innerText=s.title;
+  $('audio').src=s.src; $('audio').play();
+  $('play').innerText='⏸️';
 }
-function loadPlaylist(){
-  const tx = db.transaction("songs", "readonly");
-  tx.objectStore("songs").getAll().onsuccess = e => {
-    playlist = e.target.result;
-    renderPlaylist();
-  }
-}
-function renderPlaylist(){
-  playlistDiv.innerHTML = '';
-  playlist.forEach((song, i) => {
-    playlistDiv.innerHTML += `
-    <div class="song ${song.type==='file'?'offline':'yt'} ${i===currentIndex?'active':''}">
-      <div style="flex:1"><b>${song.title}</b><br><small>${song.type==='file'?'File':'Youtube'}</small></div>
-      <button onclick="playIndex(${i})">Play</button>
-      <button onclick="deleteSong('${song.id}')">Hapus</button>
-    </div>`;
-  });
+$('play').onclick=()=>{$('audio').paused?($('audio').play(),$('play').innerText='⏸️'):($('audio').pause(),$('play').innerText='▶️')}
+$('next').onclick=()=>{if(current<playlist.length-1)playSong(current+1)}
+$('prev').onclick=()=>{if(current>0)playSong(current-1)}
+$('repeat').onclick=()=>{$('audio').loop=!$('audio').loop; $('repeat').style.background=$('audio').loop?'red':'#1DB954'}
+$('audio').ontimeupdate=()=>{$('progress').value=($('audio').currentTime/$('audio').duration)*100||0}
+$('progress').oninput=e=>{$('audio').currentTime=($('progress').value/100)*$('audio').duration}
+$('audio').onended=()=>{if(!$('audio').loop && current<playlist.length-1)playSong(current+1)}
+
+// 3. SEARCH YOUTUBE
+async function search(){
+  let q=$('searchInput').value; if(!q)return alert('Isi dulu');
+  $('resultsWrap').classList.remove('hidden'); $('results').innerHTML='Loading...';
+  let res=await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${q}&key=${API_KEY}&maxResults=5&type=video`);
+  let data=await res.json(); $('results').innerHTML='';
+  data.items.forEach(v=>{
+    $('results').innerHTML+=`<div class="song"><img src="${v.snippet.thumbnails.default.url}"><b style="flex:1">${v.snippet.title}</b><button onclick="playYT('${v.id.videoId}','${v.snippet.title}')">Play</button><button onclick="download('${v.id.videoId}','${v.snippet.title}')">+ Playlist</button></div>`
+  })
 }
 
-// 4. HAPUS
-function deleteSong(id){
-  const tx = db.transaction("songs", "readwrite");
-  tx.objectStore("songs").delete(id);
-  tx.oncomplete = loadPlaylist;
+// 4. PLAY YT LANGSUNG - CUMA PREVIEW, GA BISA NEXT
+function playYT(id,title){
+  $('playerBar').classList.remove('hidden');
+  $('songTitle').innerText='[YT] '+title;
+  $('audio').src=`https://www.youtube.com/embed/${id}?autoplay=1`; 
+  $('audio').style.display='none'; // sembunyikan bar karena gabisa kontrol
+  alert('Ini preview Youtube. Klik "+ Playlist" dulu biar bisa di kontrol full')
 }
 
-// 5. PLAYER CONTROLS
-function playIndex(index){
-  currentIndex = index;
-  const song = playlist[index];
-  $('playerBar').style.display = 'block';
-  $('songTitle').innerText = song.title;
-  audio.src = song.data;
-  audio.play();
-  $('playBtn').innerText = '⏸️';
-  renderPlaylist();
-}
-
-$('playBtn').onclick = () => {
-  if(audio.paused){ audio.play(); $('playBtn').innerText = '⏸️'; }
-  else { audio.pause(); $('playBtn').innerText = '▶️'; }
-}
-$('nextBtn').onclick = () => { if(currentIndex < playlist.length-1) playIndex(currentIndex+1); }
-$('prevBtn').onclick = () => { if(currentIndex > 0) playIndex(currentIndex-1); }
-$('repeatBtn').onclick = () => {
-  isRepeat =!isRepeat;
-  audio.loop = isRepeat;
-  $('repeatBtn').style.background = isRepeat? '#1db954' : '#333';
-}
-audio.onended = () => { if(!isRepeat && currentIndex < playlist.length-1) playIndex(currentIndex+1); }
-audio.ontimeupdate = () => { $('progress').value = (audio.currentTime / audio.duration) * 100 || 0; }
-$('progress').oninput = e => { audio.currentTime = (e.target.value / 100) * audio.duration; }
-
-// 6. SEARCH YOUTUBE
-async function searchVideos() {
-  const query = $('searchInput').value;
-  if(!query) return alert('Isi dulu');
-  resultsSection.style.display = 'block'; // BUKA SECTION
-  resultsDiv.innerHTML = 'Loading...';
-  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(query)}&key=${API_KEY}&type=video`;
-  const res = await fetch(url);
-  const data = await res.json();
-  resultsDiv.innerHTML = '';
-  data.items.forEach(item => {
-    const videoId = item.id.videoId;
-    const title = item.snippet.title.replace(/"/g, '&quot;');
-    const thumb = item.snippet.thumbnails.medium.url;
-    resultsDiv.innerHTML += `<div class="song yt"><img src="${thumb}"><div style="flex:1"><b>${title}</b></div><button onclick="playYT('${videoId}', \`${title}\`)">Play</button> <button onclick="downloadYT('${videoId}', \`${title}\`)">+ Playlist</button></div>`;
-  });
-}
-
-// 7. PLAY YT ONLINE
-function playYT(videoId, title){
-  $('playerBar').style.display = 'block';
-  $('songTitle').innerText = '[YT] ' + title;
-  audio.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
-}
-
-// 8. DOWNLOAD YT KE PLAYLIST + OTOMATIS TUTUP
-async function downloadYT(videoId, title) {
+// 5. DOWNLOAD YT KE PLAYLIST - PAKAI API BARU
+async function download(id,title){
   alert('Downloading...');
-  const res = await fetch('https://api.cobalt.tools/api/json', {
-    method: 'POST', headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({url: `https://www.youtube.com/watch?v=${videoId}`, aFormat: "mp3", isAudioOnly: true})
-  });
-  const data = await res.json();
-  if(data.url){
-    const blob = await (await fetch(data.url)).blob();
-    const reader = new FileReader();
-    reader.onload = () => {
-      saveSong({id: 'yt_'+videoId, title: title, data: reader.result, type: 'yt'});
-      alert(title + ' masuk playlist!');
-      resultsSection.style.display = 'none'; // OTOMATIS TUTUP
-    };
-    reader.readAsDataURL(blob);
-  } else alert('Gagal download');
-}
-
-// 9. BACKGROUND PLAY
-if('mediaSession' in navigator){
-  navigator.mediaSession.setActionHandler('play', () => {$('playBtn').click()});
-  navigator.mediaSession.setActionHandler('pause', () => {$('playBtn').click()});
-  navigator.mediaSession.setActionHandler('previoustrack', () => {$('prevBtn').click()});
-  navigator.mediaSession.setActionHandler('nexttrack', () => {$('nextBtn').click()});
+  try{
+    let res=await fetch(`https://api.ytjar.com/v1/dl/mp3?url=https://youtube.com/watch?v=${id}`);
+    let data=await res.json();
+    if(data.url){
+      let blob=await (await fetch(data.url)).blob();
+      let r=new FileReader(); 
+      r.onload=()=>{addSong({id:'yt'+id,title:title,src:r.result});alert('Berhasil masuk playlist!')}; 
+      r.readAsDataURL(blob)
+    }else alert('Gagal: '+data.message)
+  }catch(e){alert('API Down. Coba 1 menit lagi')}
 }
 </script>
 </body>
