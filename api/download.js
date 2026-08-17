@@ -2,30 +2,32 @@ import ytdlp from 'yt-dlp-exec';
 import { Readable } from 'stream';
 
 export default async function handler(req, res) {
+  // Biar bisa diakses dari frontend kamu
   res.setHeader('Access-Control-Allow-Origin', '*');
-  
+
   const { id } = req.query;
-  if (!id) return res.status(400).json({ error: 'Missing video id' });
+  
+  if (!id) {
+    return res.status(400).json({ error: 'Missing video id' });
+  }
 
   try {
-    res.setHeader('Content-Type', 'audio/mpeg');
+    const url = `https://www.youtube.com/watch?v=${id}`;
+    
     res.setHeader('Content-Disposition', `attachment; filename="${id}.mp3"`);
+    res.setHeader('Content-Type', 'audio/mpeg');
 
-    const stream = ytdlp.exec(
-      `https://www.youtube.com/watch?v=${id}`,
-      {
-        output: '-',
-        extractAudio: true,
-        audioFormat: 'mp3',
-        audioQuality: '192'
-      },
-      { stdio: ['ignore', 'pipe', 'pipe'] }
-    );
+    const stream = ytdlp(url, {
+      output: '-',
+      extractAudio: true,
+      audioFormat: 'mp3',
+      audioQuality: '0',
+    });
 
-    Readable.from(stream.stdout).pipe(res);
+    Readable.from(stream).pipe(res);
 
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: e.message });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Gagal download' });
   }
 }
