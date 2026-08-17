@@ -1,95 +1,64 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<meta name="theme-color" content="#080808">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="MyMusic">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="style.css">
-<title>MyMusic</title>
-</head>
+    <!DOCTYPE html>
+    <html lang="id">
+    <head><meta charset="UTF-8"><title>MP3 Player</title>
+    <style>body{font-family:sans-serif;padding:20px;background:#111;color:white}#searchInput{width:300px;padding:10px}#searchBtn{padding:10px}.song{display:flex;margin:10px 0;background:#222;padding:10px;border-radius:8px}.song img{width:120px;margin-right:10px}button{margin:5px;padding:8px;cursor:pointer}</style>
+    </head>
+    <body>
+    <h1>🎵 MP3 Player</h1>
+    <input type="text" id="searchInput" placeholder="Cari lagu...">
+    <button id="searchBtn">Search</button>
+    <div id="results"></div>
+    <div id="player" style="display:none;margin-top:20px;"><h3 id="songTitle"></h3><iframe id="audio" width="560" height="315" src="" frameborder="0" allowfullscreen></iframe></div>
 
-<body>
+    <script>
+    const searchInput = document.getElementById('searchInput');
+    const searchBtn = document.getElementById('searchBtn');
+    const resultsDiv = document.getElementById('results');
+    const player = document.getElementById('player');
+    const audio = document.getElementById('audio');
+    const songTitle = document.getElementById('songTitle');
 
-<div class="app">
+    const API_KEY = 'AIzaSyCEpXXPWfTLuhrESQ_XxVz2uiPpA5FJ5XA'; // KEY KAMU
 
-<header>
-  <div>
-    <h1>MyMusic</h1>
-    <p id="status">Offline Music Player</p>
-  </div>
-  <button id="addBtn">＋</button>
-</header>
+    searchBtn.onclick = searchVideos;
+    searchInput.onkeypress = (e) => { if(e.key === 'Enter') searchVideos(); };
 
-<section class="player">
+    async function searchVideos() {
+      const query = searchInput.value;
+      if(!query) return alert('Isi dulu');
+      resultsDiv.innerHTML = 'Loading...';
+      try {
+        const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(query)}&key=${API_KEY}&type=video`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if(data.error){ resultsDiv.innerHTML = 'Error API: ' + data.error.message; return; }
+        resultsDiv.innerHTML = '';
+        data.items.forEach(item => {
+          const videoId = item.id.videoId;
+          const title = item.snippet.title.replace(/"/g, '&quot;');
+          const thumb = item.snippet.thumbnails.medium.url;
+          resultsDiv.innerHTML += `<div class="song"><img src="${thumb}"><div><p><b>${title}</b></p><button onclick="playSong('${videoId}', \`${title}\`)">Play</button> <button onclick="downloadSong('${videoId}', \`${title}\`)">Download MP3</button></div></div>`;
+        });
+      } catch(err){ resultsDiv.innerHTML = 'Gagal: ' + err.message; }
+    }
 
-  <div class="cover" id="cover">♪</div>
+    function playSong(videoId, title) {
+      player.style.display = 'block';
+      songTitle.innerText = title;
+      audio.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+    }
 
-  <h2 id="title">Belum ada lagu</h2>
-  <p id="artist">Tambahkan musik untuk mulai</p>
-
-  <div class="progress">
-    <span id="cur">0:00</span>
-    <input id="bar" type="range" min="0" max="100" value="0">
-    <span id="dur">0:00</span>
-  </div>
-
-  <div class="controls">
-    <button id="prev">⏮</button>
-    <button id="play">▶</button>
-    <button id="next">⏭</button>
-  </div>
-
-  <div class="sub">
-    <button id="shuffle">🔀</button>
-    <button id="repeat">🔁</button>
-  </div>
-
-</section>
-
-<section id="panel">
-
-  <label class="file">
-    📁 Tambah File
-    <input id="files" type="file"
-      accept="audio/*,video/mp4,.mp3,.wav,.m4a,.aac"
-      multiple>
-  </label>
-
-  <div class="search">
-    <input id="query" placeholder="Cari musik di YouTube...">
-    <button id="searchBtn">Cari</button>
-  </div>
-
-  <div id="results"></div>
-
-</section>
-
-<section class="library">
-
-  <div class="libhead">
-    <div>
-      <h3>Library</h3>
-      <small id="count">0 lagu</small>
-    </div>
-    <button id="clear">Hapus</button>
-  </div>
-
-  <div id="playlist"></div>
-
-</section>
-
-<audio id="audio" playsinline preload="metadata"></audio>
-<div id="youtubePlayer"></div>
-
-</div>
-
-<script src="https://www.youtube.com/iframe_api"></script>
-<script src="script.js"></script>
-
-</body>
-</html>
+    async function downloadSong(videoId, title) {
+      alert('Sedang proses download...');
+      const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
+      const res = await fetch('https://api.cobalt.tools/api/json', {
+        method: 'POST', headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: youtubeUrl, aFormat: "mp3", isAudioOnly: true })
+      });
+      const data = await res.json();
+      if(data.url) window.open(data.url, '_blank');
+      else alert('Gagal: ' + data.error.code);
+    }
+    </script>
+    </body>
+    </html>
