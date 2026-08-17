@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#080808">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MyMusic">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
+<title>MyMusic</title>
+</head>
+
+<body>
+
+<div class="app">
+
+<header>
+  <div>
+    <h1>MyMusic</h1>
+    <p id="status">Offline Music Player</p>
+  </div>
+  <button id="addBtn">＋</button>
+</header>
+
+<section class="player">
+
+  <div class="cover" id="cover">♪</div>
+
+  <h2 id="title">Belum ada lagu</h2>
+  <p id="artist">Tambahkan musik untuk mulai</p>
+
+  <div class="progress">
+    <span id="cur">0:00</span>
+    <input id="bar" type="range" min="0" max="100" value="0">
+    <span id="dur">0:00</span>
+  </div>
+
+  <div class="controls">
+    <button id="prev">⏮</button>
+    <button id="play">▶</button>
+    <button id="next">⏭</button>
+  </div>
+
+  <div class="sub">
+    <button id="shuffle">🔀</button>
+    <button id="repeat">🔁</button>
+  </div>
+
+</section>
+
+<section id="panel">
+
+  <label class="file">
+    📁 Tambah File
+    <input id="files" type="file"
+      accept="audio/*,video/mp4,.mp3,.wav,.m4a,.aac"
+      multiple>
+  </label>
+
+  <div class="search">
+    <input id="query" placeholder="Cari musik di YouTube...">
+    <button id="searchBtn">Cari</button>
+  </div>
+
+  <div id="results"></div>
+
+</section>
+
+<section class="library">
+
+  <div class="libhead">
+    <div>
+      <h3>Library</h3>
+      <small id="count">0 lagu</small>
+    </div>
+    <button id="clear">Hapus</button>
+  </div>
+
+  <div id="playlist"></div>
+
+</section>
+
+<audio id="audio" playsinline preload="metadata"></audio>
+<div id="youtubePlayer"></div>
+
+</div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script src="script.js"></script>
+
+</body>
+</html>
