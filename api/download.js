@@ -1,11 +1,5 @@
-import { spawn } from 'child_process';
-import { promisify } from 'util';
-import { pipeline } from 'stream';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
-
-const pipe = promisify(pipeline);
+import ytdlp from 'yt-dlp-exec';
+import { Readable } from 'stream';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -13,37 +7,22 @@ export default async function handler(req, res) {
   const { id } = req.query;
   if (!id) return res.status(400).json({ error: 'Missing video id' });
 
-  const youtubeUrl = `https://www.youtube.com/watch?v=${id}`;
-  const tmpDir = os.tmpdir();
-  const outputPath = path.join(tmpDir, `${id}.mp3`);
-
   try {
-    await new Promise((resolve, reject) => {
-      const yt = spawn('yt-dlp', [
-        '-x',
-        '--audio-format', 'mp3',
-        '--audio-quality', '192',
-        '-o', outputPath,
-        youtubeUrl
-      ]);
-
-      yt.stderr.on('data', (data) => {
-        console.log(`yt-dlp: ${data}`);
-      });
-
-      yt.on('close', (code) => {
-        if (code === 0) resolve();
-        else reject(new Error(`yt-dlp exited with ${code}`));
-      });
-    });
-
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Content-Disposition', `attachment; filename="${id}.mp3"`);
-    
-    const fileStream = fs.createReadStream(outputPath);
-    await pipe(fileStream, res);
-    
-    fs.unlinkSync(outputPath);
+
+    const stream = ytdlp.exec(
+      `https://www.youtube.com/watch?v=${id}`,
+      {
+        output: '-',
+        extractAudio: true,
+        audioFormat: 'mp3',
+        audioQuality: '192'
+      },
+      { stdio: ['ignore', 'pipe', 'pipe'] }
+    );
+
+    Readable.from(stream.stdout).pipe(res);
 
   } catch (e) {
     console.error(e);
