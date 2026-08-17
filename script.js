@@ -673,7 +673,7 @@ function showResults(results){
                 <button class="p">
                     ▶ Play
                 </button>
-
+                <button class="d">⬇ Download</button> 
                 <button class="a">
                     ＋ Playlist
                 </button>
@@ -708,6 +708,11 @@ function showResults(results){
         $("results").appendChild(d);
     });
 }
+/* DOWNLOAD */
+d.querySelector(".d").onclick=async()=>{
+  downloadYoutube(song);
+  closeResults();
+};
 
 
 /* SEARCH */
@@ -754,7 +759,37 @@ $("clear").onclick=async()=>{
  };
 };
 
-
+/* DOWNLOAD YOUTUBE -> MP3 */
+async function downloadYoutube(song){
+  $("status").textContent="Lagi download... tunggu 10-20 detik";
+  
+  try{
+    // Kirim ke server Vercel buat convert jadi mp3
+    const res = await fetch(`https://ymusic-server-kamu.vercel.app/api/download?id=${song.videoId}`);
+    
+    if(!res.ok) throw new Error("Server error");
+    
+    const blob = await res.blob();
+    
+    // Simpen pake fungsi yg sama kayak "Tambah File"
+    await saveSong({
+      id: crypto.randomUUID(),
+      type: "local", // ini penting biar bisa offline & background
+      title: song.title,
+      artist: song.artist,
+      blob: blob,
+      thumb: song.thumb
+    });
+    
+    songs = await getSongs();
+    render();
+    $("status").textContent="✅ Selesai! Cek di Library";
+    
+  }catch(e){
+    console.error(e);
+    $("status").textContent="❌ Gagal: "+e.message;
+  }
+}
 /* START */
 
 openDB().then(async()=>{
