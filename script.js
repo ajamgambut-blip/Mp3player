@@ -2,7 +2,73 @@
    MyMusic
    Local Music + YouTube Search + YouTube Player
    ========================================================= */
+// === INJECT VINYL + VISUALIZER ===
+document.addEventListener('DOMContentLoaded', ()=>{
+  const playerSection = document.querySelector('.player');
+  // sisipin vinyl di atas judul
+  document.getElementById('cover').insertAdjacentHTML('beforebegin', `
+    <div id="vinylWrap">
+      <div class="vinyl" id="vinyl">
+        <img id="coverVinyl" src="https://i.imgur.com/8QfXw.png">
+      </div>
+    </div>
+    <canvas id="viz"></canvas>
+  `);
 
+  const audio = document.getElementById('audio');
+  const vinyl = document.getElementById('vinyl');
+  const coverVinyl = document.getElementById('coverVinyl');
+  const canvas = document.getElementById('viz');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth; canvas.height = 70;
+
+  // AUDIO VISUALIZER
+  let audioCtx, analyser, dataArray;
+  function initAudio(){
+    if(!audioCtx){
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = audioCtx.createAnalyser();
+      let src = audioCtx.createMediaElementSource(audio);
+      src.connect(analyser); analyser.connect(audioCtx.destination);
+      analyser.fftSize = 128;
+      dataArray = new Uint8Array(analyser.frequencyBinCount);
+    }
+  }
+
+  function draw(){
+    requestAnimationFrame(draw);
+    if(!analyser) return;
+    analyser.getByteFrequencyData(dataArray);
+    ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    let barWidth = canvas.width / dataArray.length;
+    for(let i=0;i<dataArray.length;i++){
+      let h = dataArray[i]/1.5;
+      ctx.fillStyle = `hsl(${i*4},100%,55%)`;
+      ctx.fillRect(i*barWidth, canvas.height-h, barWidth-1, h);
+    }
+  }
+  draw();
+
+  // HOOK KE TOMBOL PLAY PAUSE KAMU
+  const playBtn = document.getElementById('play');
+  const oldPlay = playBtn.onclick;
+  playBtn.onclick = () => {
+    initAudio();
+    if(audioCtx) audioCtx.resume();
+    audio.paused? audio.play() : audio.pause();
+  }
+
+  audio.onplay = () => { vinyl.classList.add('playing'); }
+  audio.onpause = () => { vinyl.classList.remove('playing'); }
+
+  // UPDATE COVER VINYL PAS GANTI LAGU
+  const oldSetSong = window.setSong || function(){};
+  window.setSong = (song) => {
+    oldSetSong(song);
+    if(song && song.cover) coverVinyl.src = song.cover;
+    else coverVinyl.src = 'https://i.imgur.com/8QfXw.png';
+  }
+});
 const "AIzaSyCEpXXPWfTLuhrESQ_XxVz2uiPpA5FJ5XA";
 
 const $ = id => document.getElementById(id);
