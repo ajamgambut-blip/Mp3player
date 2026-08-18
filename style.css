@@ -85,4 +85,30 @@ input[type=range]{width:100%;accent-color:white}
 .result-head button:active{
     transform:scale(.9);
 }
+/* VINYL + VISUALIZER */
+#vinylWrap{display:flex;justify-content:center;margin:15px 0;position:relative}
+.vinyl{
+  width:220px;
+  height:220px;
+  border-radius:50%;
+  background:
+    repeating-radial-gradient(circle at center, #111 0px, #0a0a0a 2px),
+    radial-gradient(circle, #222 0%, #000 70%);
+  border:10px solid #1a1a1a;
+  box-shadow: 0 0 0 2px #333, 0 0 40px rgba(29,185,84,0.3);
+  position:relative;
+  transition:0.3s;
+}
+.vinyl::before{ /* lubang tengah */
+  content:'';position:absolute;width:60px;height:60px;background:#111;border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);border:2px solid #333;z-index:2
+}
+#coverVinyl{ /* cover di tengah vinyl */
+  width:120px;height:120px;border-radius:50%;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);object-fit:cover;z-index:3
+}
+.vinyl.playing{animation: spin 3s linear infinite}
+@keyframes spin{from{transform:rotate(0deg)} to{transform:rotate(360deg)}}
 
+#viz{width:100%;height:70px;background:#0a0a0a;border-radius:10px;margin-top:10px;display:block}
+
+/* sembunyiin cover lama */
+.cover{display:none!important}
